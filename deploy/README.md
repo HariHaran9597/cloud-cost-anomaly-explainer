@@ -4,11 +4,11 @@ This repository is prepared for a single public Cloud Run service. The service i
 
 ## Before creating cloud resources
 
-1. Choose the Google Cloud project and deployment region.
-2. Create a project-scoped monthly Cloud Billing budget alert with an amount you are comfortable monitoring.
+1. Choose a **dedicated Google Cloud project** for this demo and a deployment region. A dedicated project keeps a Cloud Run spend cap from pausing unrelated Cloud Run workloads.
+2. If your billing account is eligible for Google's Preview spend caps, configure a project-scoped monthly **Cloud Run spend cap** at the amount you choose. Also create a project budget alert for all services to watch build and registry charges.
 3. Confirm that billing is enabled and that the deployer has the required Cloud Run, Cloud Build, Artifact Registry, and service-account permissions.
 
-A Cloud Billing budget is a notification mechanism; it does not stop the service or guarantee spending stays below the alert amount. Billing data and notifications can be delayed. Cloud Run usage is pay-per-use and region/billing dependent; source deployment also uses Cloud Build and Artifact Registry, which have separate pricing. Check the current [Cloud Run pricing](https://cloud.google.com/run/pricing), [Cloud Build pricing](https://cloud.google.com/build/pricing), and [Artifact Registry pricing](https://cloud.google.com/artifact-registry/pricing) before deployment. Google documents the source deployment flow and IAM roles in [Deploy services from source](https://docs.cloud.google.com/run/docs/deploying-source-code) and budget alerts in [Create budgets and alerts](https://docs.cloud.google.com/billing/docs/how-to/budgets).
+An alerts-only budget does not stop spending. Google currently documents a Preview spend-cap budget for Cloud Run; when enforced, it pauses Cloud Run workloads across the selected project. Enforcement is delayed and in-flight/ongoing fixed costs can still accrue, so the cap is not an exact invoice ceiling. Cloud Build and Artifact Registry are separate services and are not covered by a Cloud Run service cap; use an all-services project budget alert for visibility. Availability is limited to eligible billing accounts. Check the current [Cloud Run pricing](https://cloud.google.com/run/pricing), [Cloud Build pricing](https://cloud.google.com/build/pricing), and [Artifact Registry pricing](https://cloud.google.com/artifact-registry/pricing) before deployment. Google documents [source deployment and IAM roles](https://docs.cloud.google.com/run/docs/deploying-source-code), [budget alerts](https://docs.cloud.google.com/billing/docs/how-to/budgets), and [Preview spend caps](https://docs.cloud.google.com/billing/docs/how-to/budgets-spend-caps).
 
 ## Deploy from Google Cloud Shell
 
@@ -35,7 +35,7 @@ gcloud run deploy cloud-cost-anomaly-explainer \
   --timeout 60
 ```
 
-`--allow-unauthenticated` makes the demo public. The maximum of two instances bounds service scale, but is not a billing cap. Keep the optional investigator disabled by leaving its environment variables unset.
+`--allow-unauthenticated` makes the demo public. The maximum of two instances bounds service scale, but is not a billing cap. Keep the optional investigator disabled by leaving its environment variables unset. Create the spend cap and all-services alert before deploying if the account supports them.
 
 ## Verify the deployed revision
 
