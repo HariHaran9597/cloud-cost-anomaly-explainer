@@ -16,8 +16,11 @@ jobs:
         with:
           python-version: "3.12"
           cache: pip
-      - run: python -m pip install .
-      - run: python -m compileall -q app evaluation
+      - run: python -m pip install '.[dev]'
+      - run: ruff check --select F app evaluation tests
+      - run: pytest -q
+      - run: python -m compileall -q app evaluation tests
+      - run: node --check app/static/app.js
       - run: python -m evaluation.run
       - run: docker build --tag cloud-cost-anomaly-explainer:ci .
       - name: Run container smoke check

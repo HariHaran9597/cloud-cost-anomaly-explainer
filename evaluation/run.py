@@ -103,7 +103,6 @@ def evaluate_previous_day():
             days = sorted(totals)
             alarms = [i for i in range(1, len(days)) if totals[days[i]]-totals[days[i-1]] >= 5 and totals[days[i]] >= totals[days[i-1]] * 1.35]
             alarms = sorted(alarms, key=lambda i: totals[days[i]] - totals[days[i-1]], reverse=True)[:20]
-            start = days[0]
             matched = set()
             for label in labels:
                 label_days = set(range(label["start"], label["end"] + 1))

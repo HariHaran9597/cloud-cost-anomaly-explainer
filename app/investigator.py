@@ -13,9 +13,11 @@ from urllib.parse import urlparse
 from urllib.request import Request, urlopen
 
 MAX_CALLS_PER_MINUTE = 3
+MAX_GLOBAL_CALLS_PER_MINUTE = 30
 TIMEOUT_SECONDS = 8
 MAX_RESPONSE_BYTES = 16_384
 _calls: dict[str, deque[float]] = {}
+_global_calls: deque[float] = deque()
 _lock = Lock()
 
 
@@ -36,6 +38,8 @@ def configuration() -> tuple[str, str, str] | None:
 def allow_call(client_key: str) -> bool:
     now = time.monotonic()
     with _lock:
+        while _global_calls and now - _global_calls[0] >= 60:
+            _global_calls.popleft()
         queue = _calls.get(client_key)
         if queue is None:
             if len(_calls) >= 10_000:
@@ -47,9 +51,10 @@ def allow_call(client_key: str) -> bool:
             queue = _calls[client_key] = deque()
         while queue and now - queue[0] >= 60:
             queue.popleft()
-        if len(queue) >= MAX_CALLS_PER_MINUTE:
+        if len(queue) >= MAX_CALLS_PER_MINUTE or len(_global_calls) >= MAX_GLOBAL_CALLS_PER_MINUTE:
             return False
         queue.append(now)
+        _global_calls.append(now)
         return True
 
 
@@ -136,12 +141,21 @@ def investigate(report: dict) -> dict:
         raise InvestigatorError("The investigator returned an invalid response format.")
     citations = [item for item in citations if isinstance(item, str) and item in valid_ids]
     markers = set(re.findall(r"\[(E\d+)\]", summary))
-    if not markers or not markers <= valid_ids or not set(citations) <= markers:
+    sentences = [part.strip() for part in re.split(r"(?<=[.!?])\s+", summary.strip()) if part.strip()]
+    if (
+        not markers
+        or not markers <= valid_ids
+        or set(citations) != markers
+        or not 2 <= len(sentences) <= 4
+        or any(not re.search(r"\[E\d+\]", sentence) for sentence in sentences)
+    ):
         raise InvestigatorError("The investigator response did not cite the available evidence correctly.")
-    # Prevent unsupported numeric claims by requiring every numeric token to appear in cited evidence.
-    cited_text = " ".join(item["result"] for item in evidence if item["id"] in markers)
-    numeric_tokens = re.findall(r"\b\d+(?:\.\d+)?\b", re.sub(r"\[E\d+\]", "", summary))
-    source_tokens = set(re.findall(r"\b\d+(?:\.\d+)?\b", cited_text))
-    if any(token not in source_tokens for token in numeric_tokens):
-        raise InvestigatorError("The investigator included a number that was not present in the cited evidence.")
+    # Keep each sentence's numeric claims grounded in the evidence IDs it cites.
+    for sentence in sentences:
+        sentence_ids = set(re.findall(r"\[(E\d+)\]", sentence))
+        cited_text = " ".join(item["result"] for item in evidence if item["id"] in sentence_ids)
+        numeric_tokens = re.findall(r"\b\d+(?:\.\d+)?\b", re.sub(r"\[E\d+\]", "", sentence))
+        source_tokens = set(re.findall(r"\b\d+(?:\.\d+)?\b", cited_text))
+        if any(token not in source_tokens for token in numeric_tokens):
+            raise InvestigatorError("The investigator included a number that was not present in its cited evidence.")
     return {"summary": summary, "citations": sorted(markers), "evidence": [item for item in evidence if item["id"] in markers]}

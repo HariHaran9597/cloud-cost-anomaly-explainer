@@ -126,7 +126,7 @@ function drawServices(data) {
   const groups = [["Service", data.service_breakdown.map(s => ({ name: s.service, total: s.total }))], ...Object.entries(data.dimension_breakdown || {}).map(([dimension, values]) => [dimension[0].toUpperCase() + dimension.slice(1), values])];
   for (const [heading, entries] of groups) {
     if (!entries.length) continue;
-    const groupTitle = document.createElement("h4"); groupTitle.textContent = heading; groupTitle.style.cssText = "font:600 11px Manrope,sans-serif;color:#60727c;margin:17px 0 8px"; host.append(groupTitle);
+    const groupTitle = document.createElement("h4"); groupTitle.className = "service-group-title"; groupTitle.textContent = heading; host.append(groupTitle);
     const max = Math.max(1, ...entries.map(s => s.total));
     for (const service of entries) {
     const wrapper = document.createElement("div"); wrapper.className = "service-row";
@@ -134,8 +134,8 @@ function drawServices(data) {
     const name = document.createElement("span"); name.textContent = service.name ?? service.service;
     const total = document.createElement("span"); total.textContent = currency(service.total, data.currency);
     label.append(name, total);
-    const track = document.createElement("div"); track.className = "bar";
-    const fill = document.createElement("i"); fill.style.width = `${Math.max(2, service.total / max * 100)}%`; track.append(fill);
+    const track = document.createElement("progress"); track.className = "bar"; track.max = 100;
+    track.value = Math.max(2, service.total / max * 100); track.setAttribute("aria-label", `${service.name ?? service.service} share of spend`);
     wrapper.append(label, track); host.append(wrapper);
     }
   }

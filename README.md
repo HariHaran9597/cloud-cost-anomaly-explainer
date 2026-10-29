@@ -1,5 +1,7 @@
 # Cloud Cost Anomaly Explainer
 
+[Apache-2.0](LICENSE)
+
 Answer **“what changed in our cloud bill?”** from a normalized billing CSV. The application builds daily baselines from prior observations, flags large spikes and sustained increases, and shows service-level contributors and unexplained residuals.
 
 > **Release status: source release ready; hosted demo pending.** The repository is public and its CI builds and smoke-checks the container. No Cloud Run deployment or live URL has been verified. The bundled sample is synthetic and does not represent real usage or savings.
@@ -69,7 +71,7 @@ See [`deploy/README.md`](deploy/README.md) for the prepared Cloud Run rollout, r
 
 ## Optional AI investigator
 
-The core workflow does not call an LLM. To enable the optional investigator, configure `INVESTIGATOR_API_KEY` and `INVESTIGATOR_MODEL` as server environment variables. The `INVESTIGATOR_CHAT_COMPLETIONS_URL` setting can point to an HTTPS OpenAI-compatible chat completions endpoint; it defaults to `https://api.openai.com/v1/chat/completions`. The investigator is hidden when no key and model are configured. On an explicit click, the selected CSV is uploaded again; only computed aggregate figures and service names go to the provider. Calls are limited to three per minute per client address, time out after eight seconds, and cap the response size and output tokens. Generated summaries must cite the evidence IDs and numeric claims must match cited evidence. Never put provider keys in browser configuration or logs.
+The core workflow does not call an LLM. To enable the optional investigator, configure `INVESTIGATOR_API_KEY` and `INVESTIGATOR_MODEL` as server environment variables. The `INVESTIGATOR_CHAT_COMPLETIONS_URL` setting can point to an HTTPS OpenAI-compatible chat completions endpoint; it defaults to `https://api.openai.com/v1/chat/completions`. The investigator is hidden when no key and model are configured. On an explicit click, the selected CSV is uploaded again; only computed aggregate figures and service names go to the provider. Calls are limited to three per minute per client address and 30 per minute per server process, time out after eight seconds, and cap the response size and output tokens. These in-memory limits reset when a process restarts and are not shared across instances. Generated summaries must cite every factual sentence, and numeric claims must match evidence cited in that sentence. Never put provider keys in browser configuration or logs.
 
 ## Current synthetic evaluation
 
@@ -85,6 +87,7 @@ The reserved generated seed set currently measures **1.0 precision**, **1.0 reca
 - [x] Repeatable synthetic evaluation harness and report generation
 - [x] Health/readiness routes, container, and CI workflow
 - [x] Optional bounded read-only investigator with explicit user action and evidence citations
+- [x] Apache-2.0 license for reuse and redistribution
 - [x] Run release checks and review measured evaluation output
 - [x] Publish repository
 - [ ] Deploy public demo

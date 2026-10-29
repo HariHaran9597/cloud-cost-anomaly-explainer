@@ -8,6 +8,7 @@ from urllib.parse import urlparse
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
+from starlette.concurrency import run_in_threadpool
 
 from .csv_data import MAX_DIMENSION_VALUES, MAX_DISTINCT_DATES, MAX_ROWS, MAX_SERVICES, MAX_UPLOAD_BYTES, CsvInputError, parse_billing_csv
 from .detector import analyze
@@ -83,9 +84,9 @@ async def sample_labels():
 async def analyze_upload(request: Request):
     raw = await read_bounded_body(request)
     try:
-        rows = parse_billing_csv(raw)
+        rows = await run_in_threadpool(parse_billing_csv, raw)
         filename = Path(request.headers.get("x-file-name", "Uploaded CSV")).name[:120]
-        return analyze(rows, filename)
+        return await run_in_threadpool(analyze, rows, filename)
     except CsvInputError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except ValueError as exc:
@@ -140,12 +141,12 @@ async def investigate_upload(request: Request):
     forwarded_proto = request.headers.get("x-forwarded-proto", request.url.scheme).split(",")[0].strip()
     if not origin or urlparse(origin).netloc != request.headers.get("host") or urlparse(origin).scheme != forwarded_proto:
         raise HTTPException(status_code=403, detail="Cross-origin investigator requests are not accepted.")
-    raw = await read_bounded_body(request)
     if not allow_call(request.client.host if request.client else "unknown"):
         raise HTTPException(status_code=429, detail="The investigator call limit was reached. Try again in a minute.")
+    raw = await read_bounded_body(request)
     try:
-        rows = parse_billing_csv(raw)
-        result = analyze(rows, "Uploaded billing CSV")
+        rows = await run_in_threadpool(parse_billing_csv, raw)
+        result = await run_in_threadpool(analyze, rows, "Uploaded billing CSV")
         return await asyncio.to_thread(investigate, result)
     except CsvInputError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
