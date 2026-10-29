@@ -50,7 +50,7 @@ def test_csv_parser_rejects_invalid_inputs(raw: bytes, message: str):
 
 
 def test_csv_parser_rejects_oversized_body():
-    with pytest.raises(CsvInputError, match="5 MiB"):
+    with pytest.raises(CsvInputError, match="4 MiB"):
         parse_billing_csv(b"x" * (main.MAX_UPLOAD_BYTES + 1))
 
 

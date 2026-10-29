@@ -10,7 +10,7 @@ from dataclasses import dataclass
 from datetime import date
 from decimal import Decimal, InvalidOperation
 
-MAX_UPLOAD_BYTES = 5 * 1024 * 1024
+MAX_UPLOAD_BYTES = 4 * 1024 * 1024
 MAX_ROWS = 100_000
 MAX_DISTINCT_DATES = 730
 MAX_SERVICES = 500
@@ -40,7 +40,7 @@ def parse_billing_csv(raw: bytes) -> list[BillingRow]:
     if not raw:
         raise CsvInputError("The CSV file is empty.")
     if len(raw) > MAX_UPLOAD_BYTES:
-        raise CsvInputError("The file is larger than the 5 MiB upload limit.")
+        raise CsvInputError("The file is larger than the 4 MiB upload limit.")
     try:
         decoded = raw.decode("utf-8-sig")
     except UnicodeDecodeError as exc:

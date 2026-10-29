@@ -86,7 +86,7 @@ date,service,sku,project,region,team,cost,currency
 | `team` | No | Team or owner grouping |
 | `currency` | No | One three-letter currency code per file; defaults to `USD` |
 
-The app rejects unknown or duplicate columns, malformed dates and amounts, mixed currencies, and files outside its bounds. Limits are 5 MiB, 100,000 rows, 730 observed dates, 500 services, and 2,000 distinct values per optional dimension. At least five distinct dates are required. The canonical schema is available at `GET /api/schema`, the bundled CSV at `GET /api/sample.csv`, and planted sample events at `GET /api/sample/labels`.
+The app rejects unknown or duplicate columns, malformed dates and amounts, mixed currencies, and files outside its bounds. Limits are 4 MiB, 100,000 rows, 730 observed dates, 500 services, and 2,000 distinct values per optional dimension. At least five distinct dates are required. The canonical schema is available at `GET /api/schema`, the bundled CSV at `GET /api/sample.csv`, and planted sample events at `GET /api/sample/labels`.
 
 **Provider exports are not imported directly.** An AWS, Azure, or Google Cloud export must first be mapped to this normalized contract. Provider-specific semantics such as credits, adjustments, amortization, and commitment charges can change the interpretation of a cost column.
 
@@ -167,14 +167,21 @@ Calls require an explicit user action, are limited in memory to three per minute
 
 ## Deployment recommendation
 
-**Recommended target: Google Cloud Run.** This app already ships as one stateless container, needs no database or worker, and is compatible with request-based billing and scale-to-zero. Under request-based billing, Cloud Run charges for resources while handling requests and during instance startup/shutdown; its free-tier usage is aggregated by billing account and depends on region and billing configuration. [Cloud Run pricing](https://cloud.google.com/run/pricing) · [Billing behavior](https://docs.cloud.google.com/run/docs/configuring/billing-settings).
+**Recommended target: Vercel Hobby for a personal portfolio demo.** Vercel can run this FastAPI app as a Python Function, and this project does not require Docker, a database, or a provider API key. Hobby is free for personal, non-commercial use; it is not a free commercial-hosting plan. See [Vercel's plan terms](https://vercel.com/docs/plans/hobby) and the repository-specific [Vercel deployment guide](deploy/vercel.md).
 
-For a low-traffic public demo, use the prepared [Cloud Run rollout guide](deploy/README.md): minimum instances 0, a small CPU/memory configuration, and a low maximum instance count. Choose the region near the intended audience; Mumbai (`asia-south1`) is a reasonable first choice if most viewers are in India. The app has **not** been deployed yet, and this repository does not claim a guaranteed monthly bill. Cloud Build, Artifact Registry, and network transfer can add costs beyond Cloud Run compute.
+Vercel Functions cap request and response bodies at 4.5 MB. The app therefore accepts CSV files up to 4 MiB on every deployment, leaving some room under the platform cap. That is smaller than the previous 5 MiB limit. The deployment has **not** been run yet; the guide includes live URL checks to perform before claiming the hosted demo is shipped. [Vercel function limits](https://vercel.com/docs/functions/limitations).
 
-Render Free is an alternative for a quick preview, but its free web services spin down after 15 minutes idle and can take about a minute to wake; Render says its free instances are for testing and hobby use, not production. That makes it less suitable for a polished always-ready portfolio demo. [Render free-service limits](https://render.com/docs/free).
+## Limitations and next steps
 
-Before deployment, choose a Google Cloud project and region, check current account eligibility and prices, and set an all-services budget alert. Google's Cloud Run spend cap is a Preview feature for eligible billing accounts; it pauses Cloud Run workloads project-wide when enforced, is not an exact invoice ceiling, and does not cover Cloud Build or Artifact Registry. Use a dedicated project if enabling it. [Spend-cap documentation](https://docs.cloud.google.com/billing/docs/how-to/budgets-spend-caps).
+- Deploy the app to Vercel and verify it from a clean browser session; deployment and live-URL verification are still pending.
+- Add native provider-specific export adapters only if the project scope expands beyond normalized CSV.
+- Validate on appropriately authorized, safely sanitized real-world billing exports before making claims about production accuracy.
+- The detector does not model budgets, credits, commitments, billing adjustments, usage meters, or provider-specific export semantics.
+- Negative cost rows (for example, some adjustments or credits) are rejected; a full export containing them must be reconciled or normalized before upload.
+- Service attribution and the unexplained residual are estimates; the app does not infer causal explanations.
+- There is no authentication, persistent history, team management, or cross-instance rate-limit store.
 
+The public repository is source-ready and CI-verified. Do not call the hosted V1 shipped until a public URL is deployed, checked, and matched to the source commit.
 
 ## License
 

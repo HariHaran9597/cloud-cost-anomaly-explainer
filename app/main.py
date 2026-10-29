@@ -28,7 +28,7 @@ async def read_bounded_body(request: Request) -> bytes:
     async for chunk in request.stream():
         size += len(chunk)
         if size > MAX_UPLOAD_BYTES:
-            raise HTTPException(status_code=413, detail="The file is larger than the 5 MiB upload limit.")
+            raise HTTPException(status_code=413, detail="The file is larger than the 4 MiB upload limit.")
         chunks.append(chunk)
     return b"".join(chunks)
 
