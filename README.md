@@ -2,7 +2,7 @@
 
 Answer **“what changed in our cloud bill?”** from a normalized billing CSV. The application builds daily baselines from prior observations, flags large spikes and sustained increases, and shows service-level contributors and unexplained residuals.
 
-> **Release status: implementation in progress.** The local app, detector, synthetic data, and evaluation workflow are being built. No public deployment, GitHub push, or live URL has been verified. The bundled sample is synthetic and does not represent real usage or savings.
+> **Release status: source release ready; hosted demo pending.** The repository is public and its CI builds and smoke-checks the container. No Cloud Run deployment or live URL has been verified. The bundled sample is synthetic and does not represent real usage or savings.
 
 ## Run locally
 
@@ -85,7 +85,7 @@ The reserved generated seed set currently measures **1.0 precision**, **1.0 reca
 - [x] Repeatable synthetic evaluation harness and report generation
 - [x] Health/readiness routes, container, and CI workflow
 - [x] Optional bounded read-only investigator with explicit user action and evidence citations
-- [ ] Run release checks and review measured evaluation output
+- [x] Run release checks and review measured evaluation output
 - [ ] Publish repository and deploy public demo
 - [ ] Verify live URL in a clean browser session
 
