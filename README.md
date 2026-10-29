@@ -65,6 +65,8 @@ docker run --rm -p 8000:8000 cloud-cost-anomaly-explainer
 
 For deployment, use one low-capacity request-based service, set a budget alert, and verify current provider pricing before creating cloud resources. No deployment is included in this local build.
 
+See [`deploy/README.md`](deploy/README.md) for the prepared Cloud Run rollout, resource bounds, cost notes, and post-deploy checks.
+
 ## Optional AI investigator
 
 The core workflow does not call an LLM. To enable the optional investigator, configure `INVESTIGATOR_API_KEY` and `INVESTIGATOR_MODEL` as server environment variables. The `INVESTIGATOR_CHAT_COMPLETIONS_URL` setting can point to an HTTPS OpenAI-compatible chat completions endpoint; it defaults to `https://api.openai.com/v1/chat/completions`. The investigator is hidden when no key and model are configured. On an explicit click, the selected CSV is uploaded again; only computed aggregate figures and service names go to the provider. Calls are limited to three per minute per client address, time out after eight seconds, and cap the response size and output tokens. Generated summaries must cite the evidence IDs and numeric claims must match cited evidence. Never put provider keys in browser configuration or logs.
