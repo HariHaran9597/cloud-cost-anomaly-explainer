@@ -1,96 +1,192 @@
 # Cloud Cost Anomaly Explainer
 
-[Apache-2.0](LICENSE)
+[![CI](https://github.com/HariHaran9597/cloud-cost-anomaly-explainer/actions/workflows/check.yml/badge.svg?branch=main)](https://github.com/HariHaran9597/cloud-cost-anomaly-explainer/actions/workflows/check.yml)
+[![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/)
+[![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 
-Answer **“what changed in our cloud bill?”** from a normalized billing CSV. The application builds daily baselines from prior observations, flags large spikes and sustained increases, and shows service-level contributors and unexplained residuals.
+**A CSV-first investigation tool for answering: _what changed in our cloud bill?_** Upload a normalized billing CSV or load the bundled synthetic sample to compare daily spend with a history-only baseline, inspect anomalies and contributors, and download an evidence report.
 
-> **Release status: source release ready; hosted demo pending.** The repository is public and its CI builds and smoke-checks the container. No Cloud Run deployment or live URL has been verified. The bundled sample is synthetic and does not represent real usage or savings.
+> **Release status:** source repository and CI are ready. A hosted public demo has not been deployed or verified. This project is a focused investigation demo, not a replacement for a FinOps platform and not evidence of customer savings.
 
-## Run locally
+## Contents
 
-Requires Python 3.11 or newer.
+- [What it does](#what-it-does)
+- [Quick start](#quick-start)
+- [Billing CSV format](#billing-csv-format)
+- [How detection works](#how-detection-works)
+- [Evaluation](#evaluation)
+- [External sample smoke checks](#external-sample-smoke-checks)
+- [Why no trained ML model](#why-no-trained-ml-model)
+- [Architecture and privacy](#architecture-and-privacy)
+- [Optional AI investigator](#optional-ai-investigator)
+- [Deployment recommendation](#deployment-recommendation)
+- [Limitations and next steps](#limitations-and-next-steps)
+- [License](#license)
+
+## What it does
+
+- Loads a clearly labeled synthetic sample or analyzes a user-provided CSV.
+- Aggregates daily spend and shows actual cost against a baseline built from earlier observations.
+- Flags spike and sustained-increase windows, with the measured amount, expected amount, threshold, score, and date range.
+- Ranks service and optional dimension changes; shows a residual when the service estimates do not explain the total change.
+- Displays a chart, alert evidence, thresholds, limitations, and a downloadable JSON report.
+- Optionally asks a configured LLM to summarize computed evidence. Detection still works without an API key.
+
+The application does not connect to cloud accounts, alter resources, forecast a budget, identify a causal root cause, or claim money saved.
+
+## Quick start
+
+Requires Python 3.11 or later.
+
+**Windows PowerShell**
 
 ```powershell
 python -m venv .venv
-.\.venv\Scripts\Activate.ps1
+\.venv\Scripts\Activate.ps1
 python -m pip install -e .
-python -m app.synthetic
 uvicorn app.main:app --reload
 ```
 
-Open `http://127.0.0.1:8000`. The bundled sample works without an account or API key. Uploaded data is held only while the request is processed; raw billing rows are not logged or written to disk.
+**macOS / Linux**
 
-## CSV contract
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install -e .
+uvicorn app.main:app --reload
+```
+
+Open <http://127.0.0.1:8000> and choose **Load synthetic sample**. No account, cloud credentials, database, or LLM key is needed for the main workflow.
+
+To run the repeatable evaluation and test suite:
+
+```bash
+python -m pip install -e '.[dev]'
+python -m evaluation.run
+pytest -q
+```
+
+## Billing CSV format
+
+The upload contract is deliberately small and provider-neutral:
 
 ```csv
 date,service,sku,project,region,team,cost,currency
 2026-01-01,Compute Engine,Compute instance,demo,us-central1,platform,12.50,USD
 ```
 
-Required columns: `date`, `service`, `cost`. Optional columns: `sku`, `project`, `region`, `team`, `currency` (defaults to USD). Use UTF-8, ISO dates (`YYYY-MM-DD`), non-negative decimal costs, and one currency code per file. Unknown or duplicate columns are rejected. Upload limits: 5 MiB, 100,000 rows, 730 distinct dates, 500 services, and 2,000 values in each optional dimension. At least five distinct dates are needed. Download the canonical schema at `/api/schema` and sample at `/api/sample.csv`; planted sample labels are available at `/api/sample/labels`.
+| Column | Required | Meaning |
+|---|---:|---|
+| `date` | Yes | Usage date in `YYYY-MM-DD` format |
+| `service` | Yes | Service or product name used for grouping |
+| `cost` | Yes | Non-negative decimal charge |
+| `sku` | No | Product or usage SKU |
+| `project` | No | Project, subscription, or account grouping |
+| `region` | No | Resource region |
+| `team` | No | Team or owner grouping |
+| `currency` | No | One three-letter currency code per file; defaults to `USD` |
 
-## Detection and interpretation
+The app rejects unknown or duplicate columns, malformed dates and amounts, mixed currencies, and files outside its bounds. Limits are 5 MiB, 100,000 rows, 730 observed dates, 500 services, and 2,000 distinct values per optional dimension. At least five distinct dates are required. The canonical schema is available at `GET /api/schema`, the bundled CSV at `GET /api/sample.csv`, and planted sample events at `GET /api/sample/labels`.
 
-- Each date uses only earlier rows to build its baseline.
-- The preferred baseline is the median of up to eight prior observations on the same weekday. During warm-up, the detector falls back to prior observed days.
-- A candidate increase must clear all applicable floors: 5 units of the file currency as the minimum absolute change, 35% of expected cost, and 3.5 scaled median absolute deviations. These are defaults, not universal FinOps thresholds.
-- Three or more consecutive candidate dates are grouped as a sustained increase; shorter runs are spikes.
-- Service contributors compare each service with its own historical median. The report shows an unexplained residual because service attribution may not reconcile perfectly.
-- Daily series use observed dates in the CSV. A missing date is treated as missing data, not as zero spend.
+**Provider exports are not imported directly.** An AWS, Azure, or Google Cloud export must first be mapped to this normalized contract. Provider-specific semantics such as credits, adjustments, amortization, and commitment charges can change the interpretation of a cost column.
 
-The detector does not account for budgets, credits, commitments, usage meters, billing adjustments, or provider-specific export semantics. Sparse histories and new services weaken the baseline. The app does not connect to cloud accounts, change infrastructure, or claim savings.
+## How detection works
 
-## Architecture
+The detector is deterministic statistical logic; it does not train a model.
 
-- FastAPI API and static single-page interface in one container.
-- Standard-library CSV parsing and deterministic calculations; no database, worker, or required LLM.
-- `GET /healthz` is a process health check; `GET /readyz` also checks that the bundled sample exists.
-- `POST /api/analyze` accepts a bounded CSV upload; `GET /api/sample` returns the synthetic demo.
-- Security headers are set by middleware. Browser rendering uses DOM text APIs for user-controlled labels; only escaped chart values enter SVG markup.
+1. Costs are summed by observed date. Missing dates are treated as missing data, not as zero spend.
+2. For each date, the preferred baseline is the median of up to eight earlier observations on the same weekday. During warm-up, it falls back to earlier observed days. The current and future rows are never used to set that date's baseline.
+3. A positive change is a candidate only when it clears the configured absolute, relative, and scaled median-absolute-deviation thresholds.
+4. Runs of at least three consecutive calendar days are labeled sustained increases; shorter runs are labeled spikes.
+5. Service and dimension attribution compares each group with its own historical median. It is an estimate, not causal root-cause analysis; the residual makes incomplete reconciliation visible.
 
-## Synthetic evaluation
+Defaults are a 5-unit absolute floor in the file currency, a 35% relative floor, a 3.5 scaled-MAD floor, four prior observations to enable detection, and three consecutive candidate days for a sustained increase. These defaults are not universal FinOps thresholds. The app exposes the settings and evidence with each result.
 
-Reproduce the held-out synthetic evaluation:
+## Evaluation
 
-```powershell
-python -m evaluation.run
-```
+The checked-in evaluation uses generated scenarios, not customer bills. It runs 40 seeds for each of four scenario types (normal, spike, sustained increase, and noisy), with 90 simulated days per scenario. The detector and previous-day percentage-change comparator use the same held-out scenarios.
 
-The script writes `evaluation/results.json` and `evaluation/REPORT.md`, comparing the history-only detector with a previous-day percentage-change comparator. The seed range, scenarios, fixed thresholds, alert cap, metrics, and limitations are recorded in the outputs. The results describe only generated data and should not be presented as real-bill performance.
+| Metric | History-only detector | Previous-day comparator |
+|---|---:|---:|
+| Precision | 1.0000 | 0.9412 |
+| Recall | 1.0000 | 1.0000 |
+| False alerts per 30 simulated days | 0.000 | 0.010 |
+| Median sustained detection delay | 0 days | Not measured |
+| Top-contributor accuracy | 1.0000 | Not measured |
 
-## Container
+These results describe performance on this small generator family with deliberately strong planted events. They do **not** show expected accuracy on real exports or across cloud providers. The protocol, seeds, and caveats are in [`evaluation/REPORT.md`](evaluation/REPORT.md), with machine-readable results in [`evaluation/results.json`](evaluation/results.json); reproduce them with `python -m evaluation.run`.
 
-```powershell
-docker build -t cloud-cost-anomaly-explainer .
-docker run --rm -p 8000:8000 cloud-cost-anomaly-explainer
-```
+## External sample smoke checks
 
-For deployment, use one low-capacity request-based service, set a budget alert, and verify current provider pricing before creating cloud resources. No deployment is included in this local build.
+Two public provider-format samples were used to probe the upload boundary. Both required a manual field mapping first; native provider exports are not directly supported.
 
-See [`deploy/README.md`](deploy/README.md) for the prepared Cloud Run rollout, resource bounds, cost notes, and post-deploy checks.
+| Public sample | Test result | What it establishes |
+|---|---|---|
+| [Microsoft FinOps Toolkit Azure test fixture](https://github.com/microsoft/finops-toolkit/blob/0eb91875d086c0bf488a826e964fcfecac9a67a5/src/powershell/Tests/Unit/assets/EA_AmortizedCost_Small.csv) | After mapping `Date`, `ConsumedService`, `Product`, `SubscriptionName`, `ResourceLocation`, `Cost`, and `BillingCurrency` to the canonical columns, the API accepted 28 rows across 9 observed dates and returned zero alerts. | A small positive-cost, provider-shaped CSV can pass through the normalized upload workflow. This is not an anomaly-accuracy result. |
+| [FinOps Foundation FOCUS 1.0 sample](https://github.com/FinOps-Open-Cost-and-Usage-Spec/FOCUS-Sample-Data/blob/adbdd17a132984d6e8583c149c236d2199c3f5bc/FOCUS-1.0/focus_sample.csv) | The 1,000-row, 30-date sample had 13 negative `BilledCost` rows. After mapping its FOCUS date, service, SKU, account, region, cost, and currency fields, the API correctly rejected the file because the current schema requires non-negative costs. | The current contract does not accept a full sample containing negative adjustments or credits. No detector result was produced for this file. |
+
+These are **compatibility smoke checks, not real-customer validation**. Microsoft describes its example exports as coming from an EA demo account and says they are not intended for ingestion or reporting ([Microsoft dataset notes](https://learn.microsoft.com/en-us/cloud-computing/finops/toolkit/open-data)). The FOCUS repository describes these as sample datasets and licenses them CC BY 4.0 ([sample repository](https://github.com/FinOps-Open-Cost-and-Usage-Spec/FOCUS-Sample-Data), [data license](https://github.com/FinOps-Open-Cost-and-Usage-Spec/FOCUS-Sample-Data/blob/main/license.md)); this project does not redistribute either file. Neither sample is evidence that the detector performs well on production billing data.
+
+## Why no trained ML model
+
+For this version, a trained model would add complexity without making the result more trustworthy: there is no representative, labeled customer-billing corpus to train or validate against. A history-based median and MAD rule is easy to reproduce, explain, inspect, and run without an API key or GPU.
+
+That is a **trade-off, not a blanket advantage**:
+
+- **Benefits:** deterministic results, transparent thresholds, low runtime cost, no model training pipeline, and direct evidence for each alert.
+- **Costs:** hand-chosen thresholds; limited treatment of long seasonality, usage drivers, billing adjustments, and correlated dimensions; and weaker behavior with short histories or changing service mixes.
+
+The optional LLM only summarizes calculated evidence; it does not detect anomalies, train on the uploaded file, or establish causes. A future model should be considered only after collecting appropriately permitted, representative data and showing a reproducible improvement over this baseline.
+
+## Architecture and privacy
+
+- FastAPI serves the API and static single-page interface from one container.
+- CSV parsing and analysis are bounded and run in memory; the app does not write uploaded rows to disk or log them.
+- No database, background worker, cloud-account connector, or required external service.
+- Security response headers include a restrictive Content Security Policy. User-provided labels are rendered as text; chart values are escaped before SVG insertion.
+- `/healthz` checks process health; `/readyz` also checks that the bundled sample is present.
+
+| Endpoint | Purpose |
+|---|---|
+| `GET /api/sample` | Analyze the bundled synthetic sample |
+| `GET /api/sample.csv` | Download the normalized synthetic CSV |
+| `GET /api/sample/labels` | Inspect the planted synthetic events |
+| `GET /api/schema` | Read supported fields and upload limits |
+| `POST /api/analyze` | Analyze a normalized CSV body |
+| `GET /api/report` | Download the bundled sample's JSON report |
+| `GET /api/investigator/status` | Check whether optional AI summaries are configured |
+| `POST /api/investigator` | Request an explicitly triggered, evidence-grounded summary |
+
+The public demo has no authentication. Do not upload confidential billing data to a public deployment unless its access and data-handling setup is appropriate for that data. If the investigator is enabled, the selected file is uploaded to this app again on explicit action; only computed aggregate figures and service names are sent onward to the configured provider. Review that provider's terms before enabling it.
 
 ## Optional AI investigator
 
-The core workflow does not call an LLM. To enable the optional investigator, configure `INVESTIGATOR_API_KEY` and `INVESTIGATOR_MODEL` as server environment variables. The `INVESTIGATOR_CHAT_COMPLETIONS_URL` setting can point to an HTTPS OpenAI-compatible chat completions endpoint; it defaults to `https://api.openai.com/v1/chat/completions`. The investigator is hidden when no key and model are configured. On an explicit click, the selected CSV is uploaded again; only computed aggregate figures and service names go to the provider. Calls are limited to three per minute per client address and 30 per minute per server process, time out after eight seconds, and cap the response size and output tokens. These in-memory limits reset when a process restarts and are not shared across instances. Generated summaries must cite every factual sentence, and numeric claims must match evidence cited in that sentence. Never put provider keys in browser configuration or logs.
+The core product works without an LLM. To enable the investigator, set `INVESTIGATOR_API_KEY` and `INVESTIGATOR_MODEL` on the server. Optionally set `INVESTIGATOR_CHAT_COMPLETIONS_URL` to an HTTPS OpenAI-compatible endpoint; otherwise it uses `https://api.openai.com/v1/chat/completions`.
 
-## Current synthetic evaluation
+Calls require an explicit user action, are limited in memory to three per minute per client and 30 per minute per process, and time out after eight seconds. Limits reset on process restart and are not shared across instances. The request contains computed evidence, not raw CSV rows. The response must cite each sentence; numeric claims must occur in the evidence cited by that sentence. Provider output remains untrusted text and is not treated as an action or infrastructure recommendation.
 
-The reserved generated seed set currently measures **1.0 precision**, **1.0 recall**, **0.0 false alerts per 30 simulated days**, **0 day median sustained detection delay**, and **1.0 top-contributor accuracy** for the history-only detector. The previous-day comparator measured 0.9412 precision and 1.0 recall on the same scenarios. These results come from 40 seeds per scenario type across 90 simulated days, with one deliberately strong spike or sustained increase in labeled scenarios. They measure only this generator family; they do not establish performance on real billing data. Re-run `python -m evaluation.run` to reproduce the checked-in report.
+## Deployment recommendation
 
-## Release checklist
+**Recommended target: Google Cloud Run.** This app already ships as one stateless container, needs no database or worker, and is compatible with request-based billing and scale-to-zero. Under request-based billing, Cloud Run charges for resources while handling requests and during instance startup/shutdown; its free-tier usage is aggregated by billing account and depends on region and billing configuration. [Cloud Run pricing](https://cloud.google.com/run/pricing) · [Billing behavior](https://docs.cloud.google.com/run/docs/configuring/billing-settings).
 
-- [x] Canonical CSV contract, validation, size and row limits
-- [x] Seeded synthetic sample with known injected changes
-- [x] History-only daily baseline, spike and sustained classifications
-- [x] Top service attribution and residual reporting
-- [x] Sample workflow, CSV upload, chart, evidence, and JSON download
-- [x] Repeatable synthetic evaluation harness and report generation
-- [x] Health/readiness routes, container, and CI workflow
-- [x] Optional bounded read-only investigator with explicit user action and evidence citations
-- [x] Apache-2.0 license for reuse and redistribution
-- [x] Run release checks and review measured evaluation output
-- [x] Publish repository
-- [ ] Deploy public demo
-- [ ] Verify live URL in a clean browser session
+For a low-traffic public demo, use the prepared [Cloud Run rollout guide](deploy/README.md): minimum instances 0, a small CPU/memory configuration, and a low maximum instance count. Choose the region near the intended audience; Mumbai (`asia-south1`) is a reasonable first choice if most viewers are in India. The app has **not** been deployed yet, and this repository does not claim a guaranteed monthly bill. Cloud Build, Artifact Registry, and network transfer can add costs beyond Cloud Run compute.
 
-V1 is not shipped until the checked items above and the public URL, source repository, and deployed version agree.
+Render Free is an alternative for a quick preview, but its free web services spin down after 15 minutes idle and can take about a minute to wake; Render says its free instances are for testing and hobby use, not production. That makes it less suitable for a polished always-ready portfolio demo. [Render free-service limits](https://render.com/docs/free).
+
+Before deployment, choose a Google Cloud project and region, check current account eligibility and prices, and set an all-services budget alert. Google's Cloud Run spend cap is a Preview feature for eligible billing accounts; it pauses Cloud Run workloads project-wide when enforced, is not an exact invoice ceiling, and does not cover Cloud Build or Artifact Registry. Use a dedicated project if enabling it. [Spend-cap documentation](https://docs.cloud.google.com/billing/docs/how-to/budgets-spend-caps).
+
+## Limitations and next steps
+
+- Deploy a public Cloud Run revision and verify it from a clean browser session; deployment and live-URL verification are still pending.
+- Add native provider-specific export adapters only if the project scope expands beyond normalized CSV.
+- Validate on appropriately authorized, safely sanitized real-world billing exports before making claims about production accuracy.
+- The detector does not model budgets, credits, commitments, billing adjustments, usage meters, or provider-specific export semantics.
+- Negative cost rows (for example, some adjustments or credits) are rejected; a full export containing them must be reconciled or normalized before upload.
+- Service attribution and the unexplained residual are estimates; the app does not infer causal explanations.
+- There is no authentication, persistent history, team management, or cross-instance rate-limit store.
+
+The public repository is source-ready and CI-verified. Do not call the hosted V1 shipped until a public URL is deployed, checked, and matched to the source commit.
+
+## License
+
+This project is released under the [Apache License 2.0](LICENSE).
