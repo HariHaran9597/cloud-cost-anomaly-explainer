@@ -12,6 +12,9 @@ from decimal import Decimal, InvalidOperation
 
 MAX_UPLOAD_BYTES = 5 * 1024 * 1024
 MAX_ROWS = 100_000
+MAX_DISTINCT_DATES = 730
+MAX_SERVICES = 500
+MAX_DIMENSION_VALUES = 2_000
 REQUIRED = {"date", "service", "cost"}
 OPTIONAL = {"sku", "project", "region", "team", "currency"}
 ALLOWED = REQUIRED | OPTIONAL
@@ -99,6 +102,13 @@ def parse_billing_csv(raw: bytes) -> list[BillingRow]:
             )
         if not rows:
             raise CsvInputError("The CSV has no usable billing rows.")
+        if len({row.day for row in rows}) > MAX_DISTINCT_DATES:
+            raise CsvInputError(f"Use no more than {MAX_DISTINCT_DATES} distinct dates per upload.")
+        if len({row.service for row in rows}) > MAX_SERVICES:
+            raise CsvInputError(f"Use no more than {MAX_SERVICES} distinct services per upload.")
+        for field in OPTIONAL - {"currency"}:
+            if len({getattr(row, field) for row in rows if getattr(row, field)}) > MAX_DIMENSION_VALUES:
+                raise CsvInputError(f"Use no more than {MAX_DIMENSION_VALUES} distinct values in the {field} column.")
         if len(currencies) > 1:
             raise CsvInputError("Use one currency per upload so cost changes can be compared safely.")
         return rows

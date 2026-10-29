@@ -9,7 +9,7 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
-from .csv_data import MAX_UPLOAD_BYTES, CsvInputError, parse_billing_csv
+from .csv_data import MAX_DIMENSION_VALUES, MAX_DISTINCT_DATES, MAX_ROWS, MAX_SERVICES, MAX_UPLOAD_BYTES, CsvInputError, parse_billing_csv
 from .detector import analyze
 from .investigator import InvestigatorError, allow_call, configuration, investigate
 
@@ -117,7 +117,13 @@ async def schema():
             {"name": "cost", "required": True, "format": "non-negative decimal"},
             {"name": "currency", "required": False, "default": "USD", "format": "one ISO-like 3-letter code per file"},
         ],
-        "limits": {"max_file_bytes": MAX_UPLOAD_BYTES, "max_rows": 100_000},
+        "limits": {
+            "max_file_bytes": MAX_UPLOAD_BYTES,
+            "max_rows": MAX_ROWS,
+            "max_distinct_dates": MAX_DISTINCT_DATES,
+            "max_services": MAX_SERVICES,
+            "max_values_per_optional_dimension": MAX_DIMENSION_VALUES,
+        },
     }
 
 

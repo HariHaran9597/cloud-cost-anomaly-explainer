@@ -25,7 +25,7 @@ date,service,sku,project,region,team,cost,currency
 2026-01-01,Compute Engine,Compute instance,demo,us-central1,platform,12.50,USD
 ```
 
-Required columns: `date`, `service`, `cost`. Optional columns: `sku`, `project`, `region`, `team`, `currency` (defaults to USD). Use UTF-8, ISO dates (`YYYY-MM-DD`), non-negative decimal costs, and one currency code per file. Unknown or duplicate columns are rejected. Upload limits: 5 MiB and 100,000 rows. At least five distinct dates are needed. Download the canonical schema at `/api/schema` and sample at `/api/sample.csv`; planted sample labels are available at `/api/sample/labels`.
+Required columns: `date`, `service`, `cost`. Optional columns: `sku`, `project`, `region`, `team`, `currency` (defaults to USD). Use UTF-8, ISO dates (`YYYY-MM-DD`), non-negative decimal costs, and one currency code per file. Unknown or duplicate columns are rejected. Upload limits: 5 MiB, 100,000 rows, 730 distinct dates, 500 services, and 2,000 values in each optional dimension. At least five distinct dates are needed. Download the canonical schema at `/api/schema` and sample at `/api/sample.csv`; planted sample labels are available at `/api/sample/labels`.
 
 ## Detection and interpretation
 
