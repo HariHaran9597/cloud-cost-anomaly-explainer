@@ -175,17 +175,6 @@ Render Free is an alternative for a quick preview, but its free web services spi
 
 Before deployment, choose a Google Cloud project and region, check current account eligibility and prices, and set an all-services budget alert. Google's Cloud Run spend cap is a Preview feature for eligible billing accounts; it pauses Cloud Run workloads project-wide when enforced, is not an exact invoice ceiling, and does not cover Cloud Build or Artifact Registry. Use a dedicated project if enabling it. [Spend-cap documentation](https://docs.cloud.google.com/billing/docs/how-to/budgets-spend-caps).
 
-## Limitations and next steps
-
-- Deploy a public Cloud Run revision and verify it from a clean browser session; deployment and live-URL verification are still pending.
-- Add native provider-specific export adapters only if the project scope expands beyond normalized CSV.
-- Validate on appropriately authorized, safely sanitized real-world billing exports before making claims about production accuracy.
-- The detector does not model budgets, credits, commitments, billing adjustments, usage meters, or provider-specific export semantics.
-- Negative cost rows (for example, some adjustments or credits) are rejected; a full export containing them must be reconciled or normalized before upload.
-- Service attribution and the unexplained residual are estimates; the app does not infer causal explanations.
-- There is no authentication, persistent history, team management, or cross-instance rate-limit store.
-
-The public repository is source-ready and CI-verified. Do not call the hosted V1 shipped until a public URL is deployed, checked, and matched to the source commit.
 
 ## License
 
