@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#f4f6f8" />
+    <title>Cloud Cost Anomaly Explainer</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+    <script src="/static/app.js" defer></script>
+  </head>
+  <body>
+    <header class="topbar">
+      <a class="brand" href="/" aria-label="Cloud Cost Anomaly Explainer home"><span class="brand-mark">↗</span> Cloud Cost <strong>Explainer</strong></a>
+      <span class="local-note"><span class="dot"></span> CSV stays in this request</span>
+    </header>
+    <main>
+      <section class="intro">
+        <p class="eyebrow">FINOPS INVESTIGATION · CSV FIRST</p>
+        <h1>What changed in your cloud bill?</h1>
+        <p class="lede">Compare daily spend with a history-only baseline, find the services driving a change, and download the evidence.</p>
+        <div class="actions">
+          <button id="sampleButton" class="button primary">Load synthetic sample <span aria-hidden="true">→</span></button>
+          <label class="button secondary" for="csvFile">Analyze a CSV <span aria-hidden="true">↑</span></label>
+          <input id="csvFile" type="file" accept=".csv,text/csv" hidden />
+          <a class="schema-link" href="/api/sample.csv">Download sample CSV</a>
+        </div>
+        <div id="status" class="status" role="status" aria-live="polite">Choose the bundled sample or upload your own CSV to start.</div>
+        <div id="error" class="error" role="alert" hidden></div>
+      </section>
+      <section id="results" hidden>
+        <div class="summary-row">
+          <div><p class="eyebrow">INVESTIGATION</p><h2 id="sourceTitle">Results</h2></div>
+          <div class="result-actions"><span id="sampleBadge" class="badge" hidden>SYNTHETIC SAMPLE</span><button id="downloadButton" class="button secondary small">Download report ↓</button></div>
+        </div>
+        <div id="syntheticNotice" class="notice" hidden></div>
+        <div class="metrics">
+          <article class="metric"><span>Daily average</span><strong id="averageSpend">—</strong><small id="dateRange">—</small></article>
+          <article class="metric"><span>Alerts found</span><strong id="alertCount">—</strong><small>Spike and sustained increase</small></article>
+          <article class="metric"><span>Services analyzed</span><strong id="serviceCount">—</strong><small>Aggregated from uploaded rows</small></article>
+        </div>
+        <article class="panel chart-panel">
+          <div class="panel-heading"><div><h3>Daily spend</h3><p>Observed cost compared with the expected baseline</p></div><div class="legend"><span><i class="legend-actual"></i> Actual</span><span><i class="legend-expected"></i> Expected</span></div></div>
+          <div id="chart" class="chart" role="img" aria-label="Daily actual and expected spend chart"></div>
+        </article>
+        <div class="details-grid">
+          <article class="panel"><div class="panel-heading"><div><h3>Alerts</h3><p>Each result includes its baseline, threshold, and evidence.</p></div></div><div id="alerts" class="alerts"></div></article>
+          <article class="panel"><div class="panel-heading"><div><h3>Spend breakdown</h3><p>Service totals and optional CSV dimensions</p></div></div><div id="services" class="services"></div></article>
+        </div>
+        <details class="panel methodology"><summary>How to read this result</summary><p>Each day is compared with prior observations. The detector uses recent same-weekday medians where there is enough history, then falls back to recent prior days. It does not use future rows to set a baseline.</p><p>Alerts require a minimum dollar change, percentage change, and robust spread threshold. Three or more consecutive alert days are grouped as a sustained increase.</p><ul id="limitations"></ul><p id="thresholds" class="fineprint"></p></details>
+        <article id="investigator" class="panel investigator" hidden>
+          <div class="panel-heading"><div><h3>Optional AI investigator</h3><p>Uses a configured server-side provider to summarize computed evidence.</p></div><button id="investigateButton" class="button secondary small">Generate cited summary</button></div>
+          <p class="fineprint">When you click, this CSV is sent again to this app. Only aggregated alert figures and service names are sent to the configured AI provider. The provider may process that data under its own terms; no API key is sent to your browser.</p>
+          <div id="investigatorStatus" class="status" role="status" aria-live="polite"></div>
+          <div id="investigatorOutput" class="ai-output" hidden></div>
+        </article>
+      </section>
+      <section class="how-it-works"><p class="eyebrow">A SMALL, CHECKABLE TOOL</p><h2>Every explanation points back to the data.</h2><div class="steps"><div><b>01</b><h3>Bring a billing export</h3><p>Use the documented CSV fields. No cloud account or API key required.</p></div><div><b>02</b><h3>Review the baseline</h3><p>See what the tool expected, what it observed, and the threshold it applied.</p></div><div><b>03</b><h3>Inspect contributors</h3><p>Service-level deltas expose the main drivers and any unexplained residual.</p></div></div></section>
+      <footer><span>Cloud Cost Anomaly Explainer · v0.1</span><a href="/static/README.html" id="docsLink" hidden>Project documentation</a><span>CSV data is processed in memory and not retained.</span></footer>
+    </main>
+  </body>
+</html>

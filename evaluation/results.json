@@ -1,0 +1,86 @@
+{
+  "title": "Cloud Cost Anomaly Explainer synthetic evaluation",
+  "dataset": {
+    "type": "synthetic",
+    "seed_range": [
+      3100,
+      3139
+    ],
+    "scenarios_per_type": 40,
+    "days_per_scenario": 90,
+    "scenario_types": [
+      "normal",
+      "spike",
+      "sustained",
+      "noisy"
+    ],
+    "injected_events": "One known spike or sustained increase per matching scenario; normal and noisy scenarios have no injected events."
+  },
+  "split": "Held-out generated scenarios. Reserved seed range 3100-3139; no fit or threshold selection is performed by this script.",
+  "thresholds": {
+    "minimum_absolute_delta_usd": 5,
+    "minimum_relative_delta": 0.35,
+    "mad_multiplier": 3.5,
+    "sustained_days": 3,
+    "alert_limit": 20
+  },
+  "detector": {
+    "alert_limit_per_scenario": 20,
+    "true_positives": 80,
+    "false_positives": 0,
+    "false_negatives": 0,
+    "precision": 1.0,
+    "recall": 1.0,
+    "false_alerts_per_30_days": 0.0,
+    "sustained_detection_delay_days_median": 0,
+    "attribution_top1_accuracy": 1.0,
+    "by_scenario": {
+      "normal": {
+        "scenarios": 40,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "false_alerts_per_30_days": 0.0,
+        "attribution_top1_accuracy": null
+      },
+      "spike": {
+        "scenarios": 40,
+        "true_positives": 40,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "false_alerts_per_30_days": 0.0,
+        "attribution_top1_accuracy": 1.0
+      },
+      "sustained": {
+        "scenarios": 40,
+        "true_positives": 40,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "false_alerts_per_30_days": 0.0,
+        "attribution_top1_accuracy": 1.0
+      },
+      "noisy": {
+        "scenarios": 40,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "false_alerts_per_30_days": 0.0,
+        "attribution_top1_accuracy": null
+      }
+    }
+  },
+  "previous_day_comparator": {
+    "alert_limit_per_scenario": 20,
+    "true_positives": 80,
+    "false_positives": 5,
+    "false_negatives": 0,
+    "precision": 0.9412,
+    "recall": 1.0,
+    "false_alerts_per_30_days": 0.01
+  },
+  "limitations": [
+    "All data is synthetic and generated from a small set of simple service patterns.",
+    "This measures event detection in these scenarios, not expected performance on real billing exports.",
+    "Scenarios share the same generation family; seed holdout does not establish generalization across providers or billing schemas."
+  ]
+}
