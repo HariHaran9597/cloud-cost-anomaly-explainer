@@ -6,7 +6,7 @@ import json
 import os
 import re
 import time
-from collections import defaultdict, deque
+from collections import deque
 from threading import Lock
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlparse
@@ -15,7 +15,7 @@ from urllib.request import Request, urlopen
 MAX_CALLS_PER_MINUTE = 3
 TIMEOUT_SECONDS = 8
 MAX_RESPONSE_BYTES = 16_384
-_calls: dict[str, deque[float]] = defaultdict(deque)
+_calls: dict[str, deque[float]] = {}
 _lock = Lock()
 
 
@@ -36,7 +36,15 @@ def configuration() -> tuple[str, str, str] | None:
 def allow_call(client_key: str) -> bool:
     now = time.monotonic()
     with _lock:
-        queue = _calls[client_key]
+        queue = _calls.get(client_key)
+        if queue is None:
+            if len(_calls) >= 10_000:
+                for key in list(_calls):
+                    if not _calls[key] or now - _calls[key][-1] >= 60:
+                        del _calls[key]
+                if len(_calls) >= 10_000:
+                    _calls.pop(next(iter(_calls)))
+            queue = _calls[client_key] = deque()
         while queue and now - queue[0] >= 60:
             queue.popleft()
         if len(queue) >= MAX_CALLS_PER_MINUTE:

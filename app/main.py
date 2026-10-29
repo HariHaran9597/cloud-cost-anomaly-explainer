@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import asyncio
+import json
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -39,6 +41,9 @@ async def security_headers(request, call_next):
     response.headers["Content-Security-Policy"] = "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
     response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
     response.headers["Cache-Control"] = "no-store"
+    effective_scheme = request.headers.get("x-forwarded-proto", request.url.scheme).split(",")[0].strip()
+    if effective_scheme == "https":
+        response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
     return response
 
 
@@ -60,12 +65,18 @@ async def sample():
     result = analyze(rows, "Bundled synthetic sample")
     result["synthetic"] = True
     result["synthetic_notice"] = "Synthetic billing data with planted anomalies; it does not represent customer savings or real cloud usage."
+    result["synthetic_labels"] = json.loads((SAMPLE.parent / "sample_labels.json").read_text(encoding="utf-8"))
     return result
 
 
 @app.get("/api/sample.csv")
 async def sample_csv():
     return FileResponse(SAMPLE, media_type="text/csv", filename="synthetic_billing_sample.csv")
+
+
+@app.get("/api/sample/labels")
+async def sample_labels():
+    return json.loads((SAMPLE.parent / "sample_labels.json").read_text(encoding="utf-8"))
 
 
 @app.post("/api/analyze")
@@ -129,7 +140,7 @@ async def investigate_upload(request: Request):
     try:
         rows = parse_billing_csv(raw)
         result = analyze(rows, "Uploaded billing CSV")
-        return investigate(result)
+        return await asyncio.to_thread(investigate, result)
     except CsvInputError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except ValueError as exc:

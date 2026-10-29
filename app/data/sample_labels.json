@@ -1,0 +1,20 @@
+{
+  "synthetic": true,
+  "seed": 20261029,
+  "planted_events": [
+    {
+      "start_date": "2026-02-15",
+      "end_date": "2026-02-15",
+      "type": "spike",
+      "service": "Network Egress",
+      "added_cost_per_day": 24.0
+    },
+    {
+      "start_date": "2026-03-05",
+      "end_date": "2026-03-08",
+      "type": "sustained_increase",
+      "service": "Managed Database",
+      "added_cost_per_day": 30.0
+    }
+  ]
+}
