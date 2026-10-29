@@ -19,3 +19,4 @@ jobs:
       - run: python -m pip install .
       - run: python -m compileall -q app evaluation
       - run: python -m evaluation.run
+      - run: docker build --tag cloud-cost-anomaly-explainer:ci .
