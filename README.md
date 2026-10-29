@@ -171,18 +171,6 @@ Calls require an explicit user action, are limited in memory to three per minute
 
 Vercel Functions cap request and response bodies at 4.5 MB. The app therefore accepts CSV files up to 4 MiB on every deployment, leaving some room under the platform cap. That is smaller than the previous 5 MiB limit. The deployment has **not** been run yet; the guide includes live URL checks to perform before claiming the hosted demo is shipped. [Vercel function limits](https://vercel.com/docs/functions/limitations).
 
-## Limitations and next steps
-
-- Deploy the app to Vercel and verify it from a clean browser session; deployment and live-URL verification are still pending.
-- Add native provider-specific export adapters only if the project scope expands beyond normalized CSV.
-- Validate on appropriately authorized, safely sanitized real-world billing exports before making claims about production accuracy.
-- The detector does not model budgets, credits, commitments, billing adjustments, usage meters, or provider-specific export semantics.
-- Negative cost rows (for example, some adjustments or credits) are rejected; a full export containing them must be reconciled or normalized before upload.
-- Service attribution and the unexplained residual are estimates; the app does not infer causal explanations.
-- There is no authentication, persistent history, team management, or cross-instance rate-limit store.
-
-The public repository is source-ready and CI-verified. Do not call the hosted V1 shipped until a public URL is deployed, checked, and matched to the source commit.
-
 ## License
 
 This project is released under the [Apache License 2.0](LICENSE).
