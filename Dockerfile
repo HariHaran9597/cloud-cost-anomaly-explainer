@@ -4,7 +4,6 @@ WORKDIR /srv/app
 RUN useradd --system --uid 10001 --create-home appuser
 COPY pyproject.toml README.md ./
 COPY app ./app
-COPY data ./data
 RUN pip install --no-cache-dir .
 USER 10001:10001
 EXPOSE 8000
