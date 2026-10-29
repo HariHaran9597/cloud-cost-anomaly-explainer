@@ -86,7 +86,8 @@ The reserved generated seed set currently measures **1.0 precision**, **1.0 reca
 - [x] Health/readiness routes, container, and CI workflow
 - [x] Optional bounded read-only investigator with explicit user action and evidence citations
 - [x] Run release checks and review measured evaluation output
-- [ ] Publish repository and deploy public demo
+- [x] Publish repository
+- [ ] Deploy public demo
 - [ ] Verify live URL in a clean browser session
 
 V1 is not shipped until the checked items above and the public URL, source repository, and deployed version agree.
